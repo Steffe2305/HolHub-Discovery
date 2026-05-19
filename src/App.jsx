@@ -1,10 +1,35 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 
 const BTR_CONTENT_REGISTRY = "0x17B8b74E1D0C50878ab8Bf5642b4E3E8702D178a";
 
 const ABI_CONTENT = [
   "function getContent(uint256 id) external view returns (tuple(uint256 id, address author, string uri, bool active))"
+];
+
+const CATEGORY_CODES = [
+  { code: "ADV", label: "Agenzia di viaggio", keywords: ["agenzia", "travel agency", "adv"] },
+  { code: "TOP", label: "Tour Operator", keywords: ["tour operator", "to", "top"] },
+  { code: "DMC", label: "Destination Management Company", keywords: ["dmc", "destination"] },
+  { code: "HTL", label: "Strutture alberghiere", keywords: ["hotel", "strutture", "hospitality", "resort", "b&b", "agriturismo", "htl"] },
+  { code: "FLY", label: "Compagnie aeree", keywords: ["airline", "compagnia aerea", "volo", "fly"] },
+  { code: "FER", label: "Traghetti e ferry", keywords: ["ferry", "traghetto", "fer"] },
+  { code: "CRU", label: "Crociere", keywords: ["cruise", "crociera", "cru"] },
+  { code: "CAR", label: "Noleggio auto", keywords: ["car", "auto", "rent a car", "noleggio auto"] },
+  { code: "BIK", label: "Noleggio bici", keywords: ["bike", "bici", "bicycle", "bik"] },
+  { code: "GUI", label: "Guide locali", keywords: ["guida", "guide", "local guide", "gui"] },
+  { code: "EXC", label: "Escursioni e visite", keywords: ["excursion", "escursione", "tour", "visita", "exc"] },
+  { code: "F&B", label: "Food & Beverage", keywords: ["food", "beverage", "ristorante", "restaurant", "f&b", "bar"] },
+  { code: "TKT", label: "Biglietteria", keywords: ["ticket", "biglietto", "museo", "event ticket", "tkt"] },
+  { code: "TRF", label: "Transfer", keywords: ["transfer", "shuttle", "ncc", "driver", "trf"] },
+  { code: "EVT", label: "Eventi", keywords: ["event", "evento", "mice", "wedding", "evt"] },
+  { code: "VEN", label: "Venue e location", keywords: ["venue", "location", "congress", "meeting room", "ven"] },
+  { code: "INS", label: "Assicurazioni", keywords: ["insurance", "assicurazione", "ins"] },
+  { code: "RAI", label: "Rail", keywords: ["rail", "train", "treno", "ferrovia", "rai"] },
+  { code: "SEA", label: "Nautica e turismo mare", keywords: ["sea", "nautica", "yacht", "sailing", "charter", "diving"] },
+  { code: "EDU", label: "Educational travel", keywords: ["education", "school", "academy", "language", "edu"] },
+  { code: "MED", label: "Medical / Wellness", keywords: ["medical", "wellness", "spa", "retreat", "med"] },
+  { code: "CMP", label: "Corporate travel", keywords: ["corporate", "business travel", "tmc", "cmp"] },
 ];
 
 function ipfsCid(uri) {
@@ -24,8 +49,8 @@ function ipfsGateways(uri) {
   const cid = ipfsCid(uri);
   if (!cid) return [];
   return [
-    `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
+    `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://cloudflare-ipfs.com/ipfs/${cid}`
   ];
 }
@@ -55,16 +80,16 @@ function normalizeProfile(json) {
 }
 
 function normalizeImages(json, profile) {
- const raw =
-  json?.photos ||
-  json?.images ||
-  json?.gallery ||
-  json?.media ||
-  profile?.photos ||
-  profile?.images ||
-  profile?.gallery ||
-  profile?.media ||
-  [];
+  const raw =
+    json?.photos ||
+    json?.images ||
+    json?.gallery ||
+    json?.media ||
+    profile?.photos ||
+    profile?.images ||
+    profile?.gallery ||
+    profile?.media ||
+    [];
 
   if (!Array.isArray(raw)) return [];
 
@@ -89,6 +114,63 @@ function extractRoles(profile) {
   if (buyer) return ["Buyer"];
 
   return [];
+}
+
+function countryToCode(country) {
+  const value = String(country || "").trim().toLowerCase();
+
+  if (["italia", "italy", "it", "ita"].includes(value)) return "ITA";
+  if (["francia", "france", "fr", "fra"].includes(value)) return "FRA";
+  if (["spagna", "spain", "es", "esp"].includes(value)) return "ESP";
+  if (["germania", "germany", "de", "deu"].includes(value)) return "DEU";
+  if (["regno unito", "united kingdom", "uk", "gb", "gbr"].includes(value)) return "GBR";
+  if (["usa", "united states", "stati uniti", "us"].includes(value)) return "USA";
+
+  return value.slice(0, 3).toUpperCase() || "INT";
+}
+
+function detectCategoryCode(profile) {
+  const explicit = String(profile?.categoryCode || profile?.sectorCode || "").trim().toUpperCase();
+  if (CATEGORY_CODES.some((c) => c.code === explicit)) return explicit;
+
+  const text = `${profile?.category || ""} ${profile?.sector || ""} ${profile?.subtype || ""}`.toLowerCase();
+
+  const found = CATEGORY_CODES.find((cat) =>
+    cat.keywords.some((keyword) => text.includes(keyword.toLowerCase()))
+  );
+
+  return found?.code || "SUP";
+}
+
+function categoryLabel(code) {
+  return CATEGORY_CODES.find((c) => c.code === code)?.label || "Supplier";
+}
+
+function makeHolidId(operator) {
+  const country = countryToCode(operator.country);
+  const category = operator.categoryCode || "SUP";
+  const number = String(operator.contentId).padStart(6, "0");
+  return `HOL-${country}-${category}-${number}`;
+}
+
+function parseHolidId(holid) {
+  const parts = String(holid || "").split("-");
+  const id = Number(parts[3]);
+  return Number.isFinite(id) ? id : null;
+}
+
+function getHolidFromHash() {
+  const hash = window.location.hash || "";
+  const match = hash.match(/^#\/id\/(.+)$/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function qrUrlFor(value) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=14&data=${encodeURIComponent(value)}`;
+}
+
+function verificationUrl(holid) {
+  return `${window.location.origin}/#/id/${encodeURIComponent(holid)}`;
 }
 
 function StyleTag() {
@@ -153,7 +235,7 @@ function StyleTag() {
         color: #0f172a;
       }
       .subtitle {
-        max-width: 740px;
+        max-width: 760px;
         margin: 0;
         color: #64748b;
         font-size: 15px;
@@ -248,6 +330,11 @@ function StyleTag() {
         cursor: pointer;
         background: linear-gradient(135deg, #3730a3, #06b6d4);
         box-shadow: 0 16px 35px -28px rgba(15,23,42,.75);
+      }
+      .btn.secondary {
+        background: #fff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
       }
       .btn:disabled {
         opacity: .55;
@@ -380,6 +467,17 @@ function StyleTag() {
         font-size: 14px;
         line-height: 1.5;
       }
+      .holid {
+        display: inline-flex;
+        margin-top: 10px;
+        border-radius: 999px;
+        padding: 7px 11px;
+        background: #eef2ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+        font-size: 12px;
+        font-weight: 950;
+      }
       .roles {
         display: flex;
         flex-wrap: wrap;
@@ -440,7 +538,7 @@ function StyleTag() {
         justify-content: center;
       }
       .modal {
-        width: min(980px, 100%);
+        width: min(1060px, 100%);
         max-height: 90vh;
         overflow: auto;
         border-radius: 34px;
@@ -473,9 +571,7 @@ function StyleTag() {
         font-weight: 900;
         cursor: pointer;
       }
-      .modal-body {
-        padding: 26px;
-      }
+      .modal-body { padding: 26px; }
       .modal-title {
         margin: 0;
         color: #0f172a;
@@ -505,6 +601,29 @@ function StyleTag() {
         letter-spacing: .08em;
         margin-bottom: 8px;
       }
+      .qr-box {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+        place-items: center;
+        border-radius: 24px;
+        border: 1px solid #c7d2fe;
+        background: linear-gradient(135deg, #ffffff, #eef2ff);
+        padding: 18px;
+        text-align: center;
+      }
+      .qr-box img {
+        width: 210px;
+        height: 210px;
+        border-radius: 16px;
+        background: white;
+      }
+      .qr-link {
+        width: 100%;
+        color: #475569;
+        font-size: 12px;
+        word-break: break-all;
+      }
       .gallery {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -516,6 +635,31 @@ function StyleTag() {
         height: 90px;
         object-fit: cover;
         border-radius: 16px;
+      }
+      .category-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+      @media (max-width: 800px) {
+        .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      .category-mini {
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        padding: 10px;
+      }
+      .category-code {
+        color: #3730a3;
+        font-weight: 950;
+        font-size: 13px;
+      }
+      .category-label {
+        color: #64748b;
+        font-size: 11px;
+        margin-top: 3px;
       }
     `}</style>
   );
@@ -554,16 +698,18 @@ function OperatorRow({ operator, onSelect }) {
             <div className="titleline">
               <h3 className="op-title">{operator.name || "Operatore senza nome"}</h3>
               {operator.active ? (
-                <Pill tone="verified">Attivo</Pill>
+                <Pill tone="verified">Verified by Holid</Pill>
               ) : (
                 <Pill tone="pending">Non attivo</Pill>
               )}
             </div>
 
+            <div className="holid">{operator.holid}</div>
+
             <div className="meta">
-              <strong>ID {operator.contentId}</strong>
+              <strong>BTR ID {operator.contentId}</strong>
               {" · "}
-              {operator.category || "Categoria non indicata"}
+              {operator.categoryCode} — {categoryLabel(operator.categoryCode)}
               {" · "}
               {operator.city || "Città non indicata"}, {operator.country || "Paese non indicato"}
             </div>
@@ -604,6 +750,16 @@ function DetailModal({ operator, onClose }) {
   if (!operator) return null;
 
   const firstImage = operator.images?.[0];
+  const url = verificationUrl(operator.holid);
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Link Holid copiato.");
+    } catch {
+      alert(url);
+    }
+  }
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -616,11 +772,13 @@ function DetailModal({ operator, onClose }) {
         <div className="modal-body">
           <div className="titleline">
             <h2 className="modal-title">{operator.name}</h2>
-            {operator.active ? <Pill tone="verified">Attivo</Pill> : <Pill tone="pending">Non attivo</Pill>}
+            {operator.active ? <Pill tone="verified">Verified by Holid</Pill> : <Pill tone="pending">Non attivo</Pill>}
           </div>
 
+          <div className="holid">{operator.holid}</div>
+
           <div className="meta">
-            <strong>Content ID {operator.contentId}</strong> · {operator.category} · {operator.city}, {operator.country}
+            <strong>BTR Content ID {operator.contentId}</strong> · {operator.categoryCode} — {categoryLabel(operator.categoryCode)} · {operator.city}, {operator.country}
           </div>
 
           <div className="roles">
@@ -646,20 +804,28 @@ function DetailModal({ operator, onClose }) {
                   </div>
                 </>
               )}
+
+              <div className="detail-label" style={{ marginTop: 18 }}>Proof Camino / IPFS</div>
+              <div style={{ wordBreak: "break-all", color: "#475569", fontSize: 13 }}>
+                Autore wallet: {operator.author}
+                <br />
+                URI IPFS: {operator.uri}
+              </div>
             </div>
 
             <div className="detail-card">
-              <div className="detail-label">Contatti</div>
+              <div className="detail-label">QR Holid verificabile</div>
+              <div className="qr-box">
+                <img src={qrUrlFor(url)} alt={`QR ${operator.holid}`} />
+                <strong>{operator.holid}</strong>
+                <div className="qr-link">{url}</div>
+                <button className="btn secondary" onClick={copyUrl}>Copia link pubblico</button>
+              </div>
+
+              <div className="detail-label" style={{ marginTop: 18 }}>Contatti</div>
               <div>{operator.email || "Email non indicata"}</div>
               <div>{operator.phone || "Telefono non indicato"}</div>
               <div>{operator.website || "Sito web non indicato"}</div>
-
-              <div className="detail-label" style={{ marginTop: 18 }}>Blockchain</div>
-              <div style={{ wordBreak: "break-all", color: "#475569", fontSize: 13 }}>
-                Autore: {operator.author}
-                <br />
-                URI: {operator.uri}
-              </div>
             </div>
           </div>
         </div>
@@ -668,7 +834,7 @@ function DetailModal({ operator, onClose }) {
   );
 }
 
-export default function HolyHubDiscoveryReal() {
+export default function HolHubDiscoveryWithQR() {
   const [fromId, setFromId] = useState("1");
   const [toId, setToId] = useState("100");
   const [query, setQuery] = useState("");
@@ -678,39 +844,61 @@ export default function HolyHubDiscoveryReal() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Pronto per leggere gli operatori pubblicati su Camino.");
   const [debug, setDebug] = useState("");
+  const [requestedHolid, setRequestedHolid] = useState(getHolidFromHash());
 
   const stats = useMemo(() => {
     const sellers = operators.filter((o) => o.roles.includes("Seller")).length;
     const buyers = operators.filter((o) => o.roles.includes("Buyer")).length;
     const both = operators.filter((o) => o.roles.includes("Buyer") && o.roles.includes("Seller")).length;
 
-    return {
-      sellers,
-      buyers,
-      both,
-      total: operators.length,
-    };
+    return { sellers, buyers, both, total: operators.length };
   }, [operators]);
 
   const filteredOperators = operators.filter((operator) => {
     const matchesRole =
       roleFilter === "All" || operator.roles.includes(roleFilter);
 
-    const searchable = `${operator.name} ${operator.category} ${operator.city} ${operator.country}`.toLowerCase();
+    const searchable = `${operator.holid} ${operator.name} ${operator.categoryCode} ${operator.category} ${operator.city} ${operator.country}`.toLowerCase();
     const matchesQuery = searchable.includes(query.toLowerCase());
 
     return matchesRole && matchesQuery;
   });
 
-  async function loadOperators() {
+  useEffect(() => {
+    function onHashChange() {
+      setRequestedHolid(getHolidFromHash());
+    }
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  useEffect(() => {
+    if (!requestedHolid) return;
+
+    const id = parseHolidId(requestedHolid);
+    if (!id) {
+      setStatus(`Holid ID non valido: ${requestedHolid}`);
+      return;
+    }
+
+    setFromId(String(id));
+    setToId(String(id));
+    setQuery(requestedHolid);
+    loadOperators(String(id), String(id), requestedHolid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedHolid]);
+
+  async function loadOperators(customFrom = fromId, customTo = toId, autoOpenHolid = "") {
     try {
       setLoading(true);
       setStatus("Connessione a Camino Columbus...");
       setOperators([]);
+      setSelectedOperator(null);
       setDebug("");
 
-      const start = Number(fromId);
-      const end = Number(toId);
+      const start = Number(customFrom);
+      const end = Number(customTo);
 
       if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
         throw new Error("Intervallo ID non valido.");
@@ -748,14 +936,17 @@ export default function HolyHubDiscoveryReal() {
           const json = await fetchIpfsJson(uri);
           const profile = normalizeProfile(json);
           const images = normalizeImages(json, profile);
+          const categoryCode = detectCategoryCode(profile);
 
-          loaded.push({
+          const operator = {
             contentId,
             author,
             active,
             uri,
+            categoryCode,
+            holid: "",
             name: profile?.name || "Operatore senza nome",
-            category: profile?.category || "Categoria non indicata",
+            category: profile?.category || profile?.sector || "Categoria non indicata",
             description: profile?.description || "",
             city: profile?.address?.city || "",
             country: profile?.address?.country || "",
@@ -764,9 +955,12 @@ export default function HolyHubDiscoveryReal() {
             website: profile?.contacts?.website || "",
             roles: extractRoles(profile),
             images
-          });
+          };
 
-          notes.push(`ID ${id}: caricato correttamente${images.length ? ` con ${images.length} immagini` : ""}`);
+          operator.holid = makeHolidId(operator);
+          loaded.push(operator);
+
+          notes.push(`ID ${id}: caricato ${operator.holid}${images.length ? ` con ${images.length} immagini` : ""}`);
         } catch (error) {
           notes.push(`ID ${id}: saltato (${error?.shortMessage || error?.message || "errore"})`);
         }
@@ -775,6 +969,15 @@ export default function HolyHubDiscoveryReal() {
       setOperators(loaded);
       setStatus(`Caricati ${loaded.length} profili operatore da Camino.`);
       setDebug(notes.slice(-35).join("\n"));
+
+      if (autoOpenHolid) {
+        const found = loaded.find((op) => op.holid === autoOpenHolid);
+        if (found) {
+          setSelectedOperator(found);
+        } else {
+          setStatus(`Nessun profilo trovato per ${autoOpenHolid}.`);
+        }
+      }
     } catch (error) {
       console.error(error);
       setStatus(error.message || "Errore durante la lettura degli operatori.");
@@ -788,11 +991,11 @@ export default function HolyHubDiscoveryReal() {
       <StyleTag />
       <div className="shell">
         <div className="header">
-          <div className="badge"><span className="dot" /> HoloHub Discovery · BTR Live Scan</div>
-          <h1>Operatori Buyer & Seller da Holid/BTR</h1>
+          <div className="badge"><span className="dot" /> HolHub Discovery · Holid QR Verification</div>
+          <h1>Operatori Buyer & Seller verificabili via QR</h1>
           <p className="subtitle">
-            Legge i contenuti pubblicati su Camino Columbus, recupera i profili IPFS e classifica automaticamente
-            gli operatori tra Seller, Buyer o entrambi.
+            Legge i contenuti pubblicati su Camino Columbus, genera un Holid pubblico nel formato
+            HOL-COUNTRY-CATEGORY-NUMBER e apre automaticamente la scheda quando arrivi da un QR Holid.
           </p>
         </div>
 
@@ -821,11 +1024,11 @@ export default function HolyHubDiscoveryReal() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Cerca per nome, città, categoria..."
+                  placeholder="Cerca per Holid, nome, città, categoria..."
                 />
               </label>
 
-              <button onClick={loadOperators} disabled={loading} className="btn">
+              <button onClick={() => loadOperators()} disabled={loading} className="btn">
                 {loading ? "Lettura..." : "Carica operatori"}
               </button>
             </div>
@@ -846,6 +1049,15 @@ export default function HolyHubDiscoveryReal() {
               ))}
             </div>
 
+            <div className="category-grid">
+              {CATEGORY_CODES.slice(0, 12).map((cat) => (
+                <div className="category-mini" key={cat.code}>
+                  <div className="category-code">{cat.code}</div>
+                  <div className="category-label">{cat.label}</div>
+                </div>
+              ))}
+            </div>
+
             <div className="status">{status}</div>
             {debug && <div className="debug">{debug}</div>}
           </div>
@@ -857,7 +1069,7 @@ export default function HolyHubDiscoveryReal() {
               ))
             ) : (
               <div className="empty">
-                Nessun operatore caricato al momento. Clicca “Carica operatori”.
+                {loading ? "Caricamento profilo Holid..." : "Nessun operatore caricato al momento. Clicca “Carica operatori”."}
               </div>
             )}
           </div>
