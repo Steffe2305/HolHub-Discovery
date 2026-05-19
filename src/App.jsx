@@ -185,28 +185,18 @@ function StyleTag() {
       }
       .page {
         min-height: 100vh;
-        padding: 28px;
+        padding: 0;
         background:
-          radial-gradient(900px 520px at 85% 0%, rgba(99,102,241,.22), transparent),
-          radial-gradient(760px 500px at 0% 15%, rgba(14,165,233,.18), transparent),
-          linear-gradient(135deg, #f8fafc 0%, #eef2ff 52%, #f0f9ff 100%);
+          radial-gradient(900px 520px at 12% 4%, rgba(79,70,229,.18), transparent 62%),
+          radial-gradient(760px 520px at 90% 0%, rgba(6,182,212,.16), transparent 62%),
+          radial-gradient(840px 520px at 60% 100%, rgba(124,58,237,.12), transparent 64%),
+          linear-gradient(135deg, #eef2ff 0%, #f8fafc 44%, #e0f2fe 100%);
       }
-      .shell {
-        max-width: 1180px;
-        margin: 0 auto;
-        overflow: hidden;
-        border-radius: 34px;
-        border: 1px solid rgba(99,102,241,.16);
-        background: rgba(255,255,255,.82);
-        box-shadow: 0 28px 80px -45px rgba(15,23,42,.55);
-        backdrop-filter: blur(14px);
+       .shell {
+        width: 100%;
       }
       .header {
-        padding: 34px;
-        border-bottom: 1px solid rgba(15,23,42,.08);
-        background:
-          radial-gradient(700px 300px at 80% 0%, rgba(79,70,229,.16), transparent),
-          rgba(255,255,255,.72);
+       padding: 34px;
       }
       .badge {
         display: inline-flex;
@@ -241,15 +231,12 @@ function StyleTag() {
         font-size: 15px;
         line-height: 1.65;
       }
-      .content { padding: 28px; }
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
+      .content {
+       width: 100%;
       }
       @media (max-width: 900px) {
         .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .page { padding: 14px; }
+        .shell { width: min(100% - 28px, 1280px); }
       }
       @media (max-width: 560px) {
         .stats { grid-template-columns: 1fr; }
@@ -285,8 +272,10 @@ function StyleTag() {
         margin-top: 20px;
         border-radius: 28px;
         border: 1px solid rgba(15,23,42,.08);
-        background: rgba(248,250,252,.78);
+        background: rgba(255,255,255,.52);
         padding: 18px;
+        box-shadow: 0 18px 70px -48px rgba(15,23,42,.5);
+        backdrop-filter: blur(14px);
       }
       .controls {
         display: grid;
@@ -366,6 +355,15 @@ function StyleTag() {
         color: #475569;
         font-size: 13px;
         font-weight: 650;
+      }
+      .debug-details {
+        margin-top: 14px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .debug-details summary {
+        cursor: pointer;
       }
       .debug {
         margin-top: 12px;
@@ -660,6 +658,12 @@ function StyleTag() {
         color: #64748b;
         font-size: 11px;
         margin-top: 3px;
+      }
+      .category-counts {
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.5;
       }
     `}</style>
   );
@@ -1050,16 +1054,32 @@ export default function HolHubDiscoveryWithQR() {
             </div>
 
             <div className="category-grid">
-              {CATEGORY_CODES.slice(0, 12).map((cat) => (
-                <div className="category-mini" key={cat.code}>
-                  <div className="category-code">{cat.code}</div>
-                  <div className="category-label">{cat.label}</div>
-                </div>
-              ))}
+              {CATEGORY_CODES.slice(0, 12).map((cat) => {
+                const total = operators.filter((o) => o.categoryCode === cat.code).length;
+                const sellers = operators.filter((o) => o.categoryCode === cat.code && o.roles.includes("Seller")).length;
+                const buyers = operators.filter((o) => o.categoryCode === cat.code && o.roles.includes("Buyer")).length;
+
+                return (
+                  <div className="category-mini" key={cat.code}>
+                    <div className="category-code">{cat.code} · {total}</div>
+                    <div className="category-label">{cat.label}</div>
+                    <div className="category-counts">
+                      Seller: {sellers}
+                      <br />
+                      Buyer: {buyers}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="status">{status}</div>
-            {debug && <div className="debug">{debug}</div>}
+            {debug && (
+              <details className="debug-details">
+                <summary>Debug tecnico</summary>
+                <div className="debug">{debug}</div>
+              </details>
+            )}
           </div>
 
           <div className="list">
