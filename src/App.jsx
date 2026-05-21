@@ -457,6 +457,7 @@ export default function HolihubDiscovery() {
   const [toId, setToId] = useState("100");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [resultView, setResultView] = useState("latest");
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -477,12 +478,32 @@ export default function HolihubDiscovery() {
     return matchesQuery && matchesCategory;
   });
 
-  const latestOperators = [...operators].sort((a, b) => b.contentId - a.contentId).slice(0, 5);
+  const latestOperators = [...operators].sort((a, b) => b.contentId - a.contentId).slice(0, 6);
+  const selectedCategoryLabel = categoryFilter === "All" ? "Tutte le categorie" : categoryLabel(categoryFilter);
+  const showLatest = resultView === "latest" && categoryFilter === "All" && !query.trim();
+  const displayedOperators = showLatest ? latestOperators : filteredOperators;
+  const resultsTitle = showLatest
+    ? "Ultimi operatori registrati"
+    : query.trim()
+      ? "Risultati della ricerca"
+      : categoryFilter !== "All"
+        ? selectedCategoryLabel
+        : "Tutti gli operatori verificabili";
 
   function showAllOperators() {
     setCategoryFilter("All");
+    setQuery("");
+    setResultView("all");
     setTimeout(() => {
-      document.getElementById("all-operators")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
+  function selectCategory(code) {
+    setCategoryFilter(code);
+    setResultView(code === "All" ? "all" : "all");
+    setTimeout(() => {
+      document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
 
@@ -592,7 +613,7 @@ export default function HolihubDiscovery() {
           <Logo />
           <div className="search-top">
             <span>⌕</span>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cerca hotel, operatori, esperienze..." />
+            <input value={query} onChange={(e) => { setQuery(e.target.value); setResultView("all"); }} placeholder="Cerca hotel, operatori, esperienze..." />
           </div>
           <nav className="nav">
             <a href="#explore">Esplora</a>
@@ -617,14 +638,14 @@ export default function HolihubDiscovery() {
         <section className="dashboard">
           <StatCard value={stats.buyers} label="Buyer" text="Operatori che acquistano servizi da altri attori della rete." />
           <StatCard value={stats.sellers} label="Seller" text="Operatori che pubblicano servizi, inventory o contenuti." />
-          <CategoryPanel operators={operators} onCategory={setCategoryFilter} />
+          <CategoryPanel operators={operators} onCategory={selectCategory} />
         </section>
 
         <section className="tools-panel">
           <div className="tools-grid">
             <div className="field"><label>Da profilo</label><input value={fromId} onChange={(e) => setFromId(e.target.value)} /></div>
             <div className="field"><label>A profilo</label><input value={toId} onChange={(e) => setToId(e.target.value)} /></div>
-            <div className="field"><label>Categoria</label><select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}><option value="All">Tutte le categorie</option>{CATEGORY_CODES.map((cat) => <option key={cat.code} value={cat.code}>{cat.full}</option>)}</select></div>
+            <div className="field"><label>Categoria</label><select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setResultView("all"); }}><option value="All">Tutte le categorie</option>{CATEGORY_CODES.map((cat) => <option key={cat.code} value={cat.code}>{cat.full}</option>)}</select></div>
             <button onClick={() => loadOperators()} disabled={loading} className="load-btn">{loading ? "Lettura..." : "Carica profili"}</button>
           </div>
           <div className="status">{status}</div>
@@ -633,26 +654,26 @@ export default function HolihubDiscovery() {
 
         <section id="explore">
           <div className="section-head">
-            <h2 className="section-title">Ultimi operatori registrati</h2>
-            <button className="see-all" onClick={showAllOperators}>Vedi tutti →</button>
-          </div>
-          {latestOperators.length > 0 ? (
-            <div className="operator-grid">
-              {latestOperators.map((operator) => <OperatorCard key={operator.contentId} operator={operator} onSelect={setSelectedOperator} />)}
+            <h2 className="section-title">{resultsTitle}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div className="status" style={{ marginTop: 0 }}>
+                {showLatest ? `${displayedOperators.length} profili recenti` : `${displayedOperators.length} profili visualizzati`}
+              </div>
+              {!showLatest && (
+                <button className="see-all" onClick={() => { setCategoryFilter("All"); setQuery(""); setResultView("latest"); }}>
+                  Torna agli ultimi →
+                </button>
+              )}
+              {showLatest && (
+                <button className="see-all" onClick={showAllOperators}>
+                  Vedi tutti →
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="empty">{loading ? "Caricamento profili Holid..." : "Nessun profilo caricato. Clicca “Carica profili” per leggere gli operatori verificabili da Camino."}</div>
-          )}
-        </section>
-
-        <section id="all-operators">
-          <div className="section-head">
-            <h2 className="section-title">Tutti gli operatori verificabili</h2>
-            <div className="status" style={{ marginTop: 0 }}>{filteredOperators.length} profili visualizzati</div>
           </div>
-          {filteredOperators.length > 0 ? (
+          {displayedOperators.length > 0 ? (
             <div className="operator-grid">
-              {filteredOperators.map((operator) => <OperatorCard key={`all-${operator.contentId}`} operator={operator} onSelect={setSelectedOperator} />)}
+              {displayedOperators.map((operator) => <OperatorCard key={operator.contentId} operator={operator} onSelect={setSelectedOperator} />)}
             </div>
           ) : (
             <div className="empty">{loading ? "Caricamento profili Holid..." : "Nessun operatore trovato con i filtri attuali."}</div>
