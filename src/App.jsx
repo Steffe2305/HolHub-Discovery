@@ -196,9 +196,15 @@ function StyleTag() {
     .nav a { color:#08011f; text-decoration:none; }
     .login { border:0; border-radius:16px; padding:17px 26px; font-size:14px; font-weight:950; color:white; cursor:pointer; background:linear-gradient(135deg,#3b0b88,#6d13ca); box-shadow:0 20px 40px -28px rgba(61,10,135,.85); }
     .hero { position:relative; overflow:hidden; border-radius:18px; min-height:248px; padding:46px 54px; color:white; background: radial-gradient(620px 280px at 82% 54%, rgba(185,30,225,.62), transparent 70%), radial-gradient(760px 320px at 76% 56%, rgba(122,31,214,.50), transparent 72%), linear-gradient(135deg,#1d074d 0%,#2b096e 44%,#150535 100%); box-shadow:0 30px 70px -48px rgba(25,5,76,.8); }
-    .hero:before { content:""; position:absolute; right:-62px; top:-74px; width:760px; height:430px; opacity:.72; background: radial-gradient(circle at 50% 54%, rgba(255,255,255,.95) 0 4px, transparent 5px), radial-gradient(circle at 74% 38%, rgba(255,255,255,.75) 0 3px, transparent 4px), radial-gradient(circle at 30% 72%, rgba(255,255,255,.75) 0 3px, transparent 4px), radial-gradient(circle at 65% 64%, rgba(255,255,255,.45) 0 2px, transparent 3px), radial-gradient(ellipse at center, rgba(136,54,238,.58), rgba(88,20,168,.22) 50%, transparent 72%); border-radius:50%; border:1px dashed rgba(255,255,255,.34); transform:rotate(-8deg); }
-    .hero:after { content:""; position:absolute; right:36px; top:-8px; width:610px; height:320px; opacity:.42; background: radial-gradient(ellipse at 60% 52%, rgba(181,106,255,.36), transparent 55%), repeating-linear-gradient(90deg, transparent 0 34px, rgba(255,255,255,.22) 35px 36px), repeating-linear-gradient(0deg, transparent 0 34px, rgba(255,255,255,.12) 35px 36px); border-radius: 50%; transform: rotate(-11deg); }
+    .hero:before { content:""; position:absolute; right:-62px; top:-74px; width:760px; height:430px; opacity:.52; background: radial-gradient(circle at 50% 54%, rgba(255,255,255,.95) 0 4px, transparent 5px), radial-gradient(circle at 74% 38%, rgba(255,255,255,.75) 0 3px, transparent 4px), radial-gradient(circle at 30% 72%, rgba(255,255,255,.75) 0 3px, transparent 4px), radial-gradient(circle at 65% 64%, rgba(255,255,255,.45) 0 2px, transparent 3px), radial-gradient(ellipse at center, rgba(136,54,238,.58), rgba(88,20,168,.22) 50%, transparent 72%); border-radius:50%; border:1px dashed rgba(255,255,255,.34); transform:rotate(-8deg); }
+    .hero:after { content:""; position:absolute; right:36px; top:-8px; width:610px; height:320px; opacity:.28; background: radial-gradient(ellipse at 60% 52%, rgba(181,106,255,.36), transparent 55%), repeating-linear-gradient(90deg, transparent 0 34px, rgba(255,255,255,.22) 35px 36px), repeating-linear-gradient(0deg, transparent 0 34px, rgba(255,255,255,.12) 35px 36px); border-radius: 50%; transform: rotate(-11deg); }
     .hero-content { position:relative; z-index:2; max-width:980px; }
+    .world-visual { position:absolute; z-index:1; right:34px; top:18px; width:min(40vw, 540px); height:215px; pointer-events:none; opacity:.92; }
+    .world-visual svg { width:100%; height:100%; filter: drop-shadow(0 22px 35px rgba(12,2,42,.22)); }
+    .world-visual .continent { fill:rgba(255,255,255,.18); stroke:rgba(255,255,255,.45); stroke-width:1.4; }
+    .world-visual .route { fill:none; stroke:rgba(255,255,255,.58); stroke-width:1.4; stroke-dasharray:6 8; }
+    .world-visual .node { fill:white; opacity:.92; }
+    @media (max-width: 980px) { .world-visual { display:none; } }
     .hero h1 { margin:0 0 18px; color:white; font-size:clamp(36px,4.8vw,58px); line-height:.98; letter-spacing:-.06em; font-weight:950; }
     .hero p { margin:0; max-width:780px; font-size:20px; line-height:1.5; color:rgba(255,255,255,.92); }
     .hero-points { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:24px; margin-top:44px; max-width:920px; }
@@ -209,7 +215,9 @@ function StyleTag() {
     .point-caption { margin-top:4px; color:rgba(255,255,255,.82); font-size:14px; }
     .dashboard { display:grid; grid-template-columns: 315px 315px 1fr; gap:18px; margin-top:28px; align-items:stretch; }
     .stat-card, .category-panel, .tools-panel, .operator-card, .benefits, .modal { background:rgba(255,255,255,.92); border:1px solid rgba(70,24,125,.10); box-shadow:0 18px 55px -42px rgba(37,7,87,.55); }
-    .stat-card { border-radius:18px; padding:34px 36px; display:grid; grid-template-columns:76px 1fr; gap:24px; align-items:start; min-height:150px; }
+    .stat-card { border-radius:18px; padding:34px 36px; display:grid; grid-template-columns:76px 1fr; gap:24px; align-items:start; min-height:150px; transition:.16s ease; }
+    .stat-card.clickable { cursor:pointer; }
+    .stat-card.clickable:hover { transform:translateY(-3px); border-color:rgba(109,19,202,.26); box-shadow:0 26px 70px -42px rgba(37,7,87,.72); }
     .stat-icon, .cat-icon, .benefit-icon { background:#f0e7ff; color:#6d13ca; display:grid; place-items:center; }
     .stat-icon { width:68px; height:68px; border-radius:50%; } .stat-icon svg { width:32px; height:32px; stroke-width:2.2; }
     .stat-value { font-size:42px; line-height:1; font-weight:950; letter-spacing:-.04em; }
@@ -324,16 +332,16 @@ function Icon({ name }) {
   return <svg {...common}>{paths[name] || paths.dots}</svg>;
 }
 
-function StatCard({ value, label, text }) {
+function StatCard({ value, label, text, onClick }) {
   return (
-    <div className="stat-card">
+    <button type="button" className={onClick ? "stat-card clickable" : "stat-card"} onClick={onClick} style={{ border: undefined, textAlign: "left" }}>
       <div className="stat-icon"><Icon name="users" /></div>
       <div>
         <div className="stat-value">{value}</div>
         <div className="stat-label">{label}</div>
         <div className="stat-text">{text}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -457,6 +465,7 @@ export default function HolihubDiscovery() {
   const [toId, setToId] = useState("100");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [roleFilter, setRoleFilter] = useState("All");
   const [resultView, setResultView] = useState("latest");
   const [operators, setOperators] = useState([]);
   const [selectedOperator, setSelectedOperator] = useState(null);
@@ -468,30 +477,35 @@ export default function HolihubDiscovery() {
   const stats = useMemo(() => {
     const sellers = operators.filter((o) => o.roles.includes("Seller")).length;
     const buyers = operators.filter((o) => o.roles.includes("Buyer")).length;
-    return { sellers, buyers, total: operators.length };
+    const both = operators.filter((o) => o.roles.includes("Buyer") && o.roles.includes("Seller")).length;
+    return { sellers, buyers, both, total: operators.length };
   }, [operators]);
 
   const filteredOperators = operators.filter((operator) => {
     const searchable = `${operator.holid} ${operator.name} ${operator.categoryCode} ${operator.category} ${operator.city} ${operator.country}`.toLowerCase();
     const matchesQuery = searchable.includes(query.toLowerCase());
     const matchesCategory = categoryFilter === "All" || operator.categoryCode === categoryFilter;
-    return matchesQuery && matchesCategory;
+    const matchesRole = roleFilter === "All" || operator.roles.includes(roleFilter);
+    return matchesQuery && matchesCategory && matchesRole;
   });
 
-  const latestOperators = [...operators].sort((a, b) => b.contentId - a.contentId).slice(0, 6);
+  const latestOperators = [...operators].sort((a, b) => b.contentId - a.contentId).slice(0, 4);
   const selectedCategoryLabel = categoryFilter === "All" ? "Tutte le categorie" : categoryLabel(categoryFilter);
-  const showLatest = resultView === "latest" && categoryFilter === "All" && !query.trim();
+  const showLatest = resultView === "latest" && categoryFilter === "All" && roleFilter === "All" && !query.trim();
   const displayedOperators = showLatest ? latestOperators : filteredOperators;
   const resultsTitle = showLatest
     ? "Ultimi operatori registrati"
     : query.trim()
       ? "Risultati della ricerca"
+      : roleFilter !== "All"
+      ? `${roleFilter} verificati`
       : categoryFilter !== "All"
         ? selectedCategoryLabel
         : "Tutti gli operatori verificabili";
 
   function showAllOperators() {
     setCategoryFilter("All");
+    setRoleFilter("All");
     setQuery("");
     setResultView("all");
     setTimeout(() => {
@@ -501,7 +515,8 @@ export default function HolihubDiscovery() {
 
   function selectCategory(code) {
     setCategoryFilter(code);
-    setResultView(code === "All" ? "all" : "all");
+    setRoleFilter("All");
+    setResultView("all");
     setTimeout(() => {
       document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -613,7 +628,7 @@ export default function HolihubDiscovery() {
           <Logo />
           <div className="search-top">
             <span>⌕</span>
-            <input value={query} onChange={(e) => { setQuery(e.target.value); setResultView("all"); }} placeholder="Cerca hotel, operatori, esperienze..." />
+            <input value={query} onChange={(e) => { setQuery(e.target.value); setRoleFilter("All"); setResultView("all"); }} placeholder="Cerca hotel, operatori, esperienze..." />
           </div>
           <nav className="nav">
             <a href="#explore">Esplora</a>
@@ -633,11 +648,24 @@ export default function HolihubDiscovery() {
               <div className="hero-point"><div className="point-icon"><Icon name="badge" /></div><div><div className="point-title">Fiducia e trasparenza</div><div className="point-caption">Verifiche pubbliche e immutabili</div></div></div>
             </div>
           </div>
+          <div className="world-visual" aria-hidden="true">
+            <svg viewBox="0 0 620 260" role="img">
+              <path className="continent" d="M85 88c26-28 76-38 111-20 17 9 38 4 55 13 28 15 28 50 2 64-23 12-41-1-62 11-27 15-66 13-91-5-22-16-37-39-15-63Z" />
+              <path className="continent" d="M286 64c31-20 82-18 109 2 30 22 17 57-15 67-20 6-43 1-59 15-23 20-61 9-70-20-8-26 8-47 35-64Z" />
+              <path className="continent" d="M432 113c36-19 90-11 111 20 18 26 5 58-31 66-29 7-48-13-77-6-30 7-61-11-66-39-4-21 18-29 63-41Z" />
+              <path className="route" d="M132 129C224 61 356 58 477 143" />
+              <path className="route" d="M191 153C272 206 390 205 508 171" />
+              <circle className="node" cx="132" cy="129" r="5" />
+              <circle className="node" cx="292" cy="84" r="5" />
+              <circle className="node" cx="477" cy="143" r="5" />
+              <circle className="node" cx="508" cy="171" r="5" />
+            </svg>
+          </div>
         </section>
 
         <section className="dashboard">
-          <StatCard value={stats.buyers} label="Buyer" text="Operatori che acquistano servizi da altri attori della rete." />
-          <StatCard value={stats.sellers} label="Seller" text="Operatori che pubblicano servizi, inventory o contenuti." />
+          <StatCard value={stats.buyers} label="Buyer" text="Operatori che acquistano servizi da altri attori della rete." onClick={() => { setRoleFilter("Buyer"); setCategoryFilter("All"); setQuery(""); setResultView("all"); document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+          <StatCard value={stats.sellers} label="Seller" text="Operatori che pubblicano servizi, inventory o contenuti." onClick={() => { setRoleFilter("Seller"); setCategoryFilter("All"); setQuery(""); setResultView("all"); document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
           <CategoryPanel operators={operators} onCategory={selectCategory} />
         </section>
 
@@ -645,7 +673,7 @@ export default function HolihubDiscovery() {
           <div className="tools-grid">
             <div className="field"><label>Da profilo</label><input value={fromId} onChange={(e) => setFromId(e.target.value)} /></div>
             <div className="field"><label>A profilo</label><input value={toId} onChange={(e) => setToId(e.target.value)} /></div>
-            <div className="field"><label>Categoria</label><select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setResultView("all"); }}><option value="All">Tutte le categorie</option>{CATEGORY_CODES.map((cat) => <option key={cat.code} value={cat.code}>{cat.full}</option>)}</select></div>
+            <div className="field"><label>Categoria</label><select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setRoleFilter("All"); setResultView("all"); }}><option value="All">Tutte le categorie</option>{CATEGORY_CODES.map((cat) => <option key={cat.code} value={cat.code}>{cat.full}</option>)}</select></div>
             <button onClick={() => loadOperators()} disabled={loading} className="load-btn">{loading ? "Lettura..." : "Carica profili"}</button>
           </div>
           <div className="status">{status}</div>
@@ -660,7 +688,7 @@ export default function HolihubDiscovery() {
                 {showLatest ? `${displayedOperators.length} profili recenti` : `${displayedOperators.length} profili visualizzati`}
               </div>
               {!showLatest && (
-                <button className="see-all" onClick={() => { setCategoryFilter("All"); setQuery(""); setResultView("latest"); }}>
+                <button className="see-all" onClick={() => { setCategoryFilter("All"); setRoleFilter("All"); setQuery(""); setResultView("latest"); }}>
                   Torna agli ultimi →
                 </button>
               )}
