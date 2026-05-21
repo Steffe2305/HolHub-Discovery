@@ -65,6 +65,40 @@ function normalizeProfile(json) {
   return json?.profile || json || {};
 }
 
+function isOperatorProfile(json, profile) {
+  const type = String(
+    json?.type ||
+    profile?.type ||
+    json?.recordType ||
+    profile?.recordType ||
+    json?.kind ||
+    profile?.kind ||
+    ""
+  ).toLowerCase();
+
+  const hasBookingSignals =
+    type.includes("booking") ||
+    type.includes("proof") ||
+    type.includes("voucher") ||
+    Boolean(json?.booking) ||
+    Boolean(json?.bookingProof) ||
+    Boolean(json?.voucher) ||
+    Boolean(json?.roomBooking) ||
+    Boolean(profile?.booking) ||
+    Boolean(profile?.bookingProof) ||
+    Boolean(profile?.voucher) ||
+    Boolean(profile?.roomBooking);
+
+  if (hasBookingSignals) return false;
+
+  return Boolean(
+    profile?.name ||
+    profile?.category ||
+    profile?.sector ||
+    profile?.roles
+  );
+}
+
 function normalizeImages(json, profile) {
   const raw = json?.photos || json?.images || json?.gallery || json?.media || profile?.photos || profile?.images || profile?.gallery || profile?.media || [];
   if (!Array.isArray(raw)) return [];
@@ -184,7 +218,7 @@ function StyleTag() {
     .category-panel { border-radius:18px; padding:26px 34px; }
     .panel-head { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:20px; }
     .panel-title { font-size:20px; font-weight:950; letter-spacing:-.02em; color:#100433; }
-    .see-all { color:#6d13ca; font-size:14px; font-weight:950; text-decoration:none; }
+    .see-all { border:0; background:transparent; color:#6d13ca; font-size:14px; font-weight:950; text-decoration:none; cursor:pointer; padding:0; }
     .cat-grid { display:grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap:22px 28px; }
     .cat-item { display:grid; grid-template-columns:54px 1fr; gap:14px; align-items:center; min-width:0; }
     .cat-icon { width:48px; height:48px; border-radius:12px; } .cat-icon svg { width:25px; height:25px; stroke-width:2.1; }
@@ -443,7 +477,14 @@ export default function HolihubDiscovery() {
     return matchesQuery && matchesCategory;
   });
 
-  const latestOperators = [...filteredOperators].sort((a, b) => b.contentId - a.contentId).slice(0, 5);
+  const latestOperators = [...operators].sort((a, b) => b.contentId - a.contentId).slice(0, 5);
+
+  function showAllOperators() {
+    setCategoryFilter("All");
+    setTimeout(() => {
+      document.getElementById("all-operators")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
 
   useEffect(() => {
     function onHashChange() { setRequestedHolid(getHolidFromHash()); }
@@ -497,6 +538,12 @@ export default function HolihubDiscovery() {
 
           const json = await fetchIpfsJson(uri);
           const profile = normalizeProfile(json);
+
+          if (!isOperatorProfile(json, profile)) {
+            notes.push(`Profilo ${id}: nascosto perché non è un profilo operatore Holihub`);
+            continue;
+          }
+
           const images = normalizeImages(json, profile);
           const categoryCode = detectCategoryCode(profile);
           const operator = {
@@ -587,7 +634,7 @@ export default function HolihubDiscovery() {
         <section id="explore">
           <div className="section-head">
             <h2 className="section-title">Ultimi operatori registrati</h2>
-            <button className="see-all" onClick={() => setCategoryFilter("All")}>Vedi tutti →</button>
+            <button className="see-all" onClick={showAllOperators}>Vedi tutti →</button>
           </div>
           {latestOperators.length > 0 ? (
             <div className="operator-grid">
@@ -595,6 +642,20 @@ export default function HolihubDiscovery() {
             </div>
           ) : (
             <div className="empty">{loading ? "Caricamento profili Holid..." : "Nessun profilo caricato. Clicca “Carica profili” per leggere gli operatori verificabili da Camino."}</div>
+          )}
+        </section>
+
+        <section id="all-operators">
+          <div className="section-head">
+            <h2 className="section-title">Tutti gli operatori verificabili</h2>
+            <div className="status" style={{ marginTop: 0 }}>{filteredOperators.length} profili visualizzati</div>
+          </div>
+          {filteredOperators.length > 0 ? (
+            <div className="operator-grid">
+              {filteredOperators.map((operator) => <OperatorCard key={`all-${operator.contentId}`} operator={operator} onSelect={setSelectedOperator} />)}
+            </div>
+          ) : (
+            <div className="empty">{loading ? "Caricamento profili Holid..." : "Nessun operatore trovato con i filtri attuali."}</div>
           )}
         </section>
 
