@@ -606,7 +606,7 @@ export default function HolihubDiscovery() {
 
       setOperators(loaded);
       setStatus(`Caricati ${loaded.length} profili verificabili da Camino.`);
-      setDebug(notes.slice(-35).join("\n"));
+      setDebug(notes.join("\n"));
       if (autoOpenHolid) {
         const found = loaded.find((op) => op.holid === autoOpenHolid);
         if (found) setSelectedOperator(found);
